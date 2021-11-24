@@ -1,0 +1,59 @@
+--------------------------------------------------------------------
+shader 'main' {
+	uniform = {
+		Param    = block() {
+			intensity = float( 1 )
+		};
+
+		_sampler_ = sampler( 1 );
+	};
+
+	program_vertex = 'vsh';
+	program_fragment = 'fsh';
+}
+
+--------------------------------------------------------------------
+source 'vsh' [[
+	@in vec4 position;
+	@in vec2 uv;
+	@in vec4 color;
+
+	@out LOWP vec4 colorVarying;
+	@out MEDP vec2 uvVarying;
+
+	void main () {
+		gl_Position = position;
+		uvVarying = uv;
+		colorVarying = color;
+	}
+]]
+
+--------------------------------------------------------------------
+source 'fsh' [[	
+		@in LOWP vec4 colorVarying;
+		@in MEDP vec2 uvVarying;
+		
+		@out vec4 FragColor;
+		@sampler _sampler_;
+		@block Param;
+
+		float Luminance( in vec4 color )
+		{
+		    return (color.r + color.g + color.b ) / 3.0;
+		}
+
+		vec4 Sepia( in vec4 color )
+		{
+		    return vec4(
+		          clamp(color.r * 0.393 + color.g * 0.769 + color.b * 0.189, 0.0, 1.0)
+		        , clamp(color.r * 0.349 + color.g * 0.686 + color.b * 0.168, 0.0, 1.0)
+		        , clamp(color.r * 0.272 + color.g * 0.534 + color.b * 0.131, 0.0, 1.0)
+		        , color.a
+		    );
+		}
+		
+		void main () {
+			LOWP vec4 color = texture ( _sampler_, uvVarying );
+			FragColor = mix(color, Sepia(color), intensity );
+		}
+]]

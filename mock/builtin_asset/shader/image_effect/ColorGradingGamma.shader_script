@@ -1,0 +1,85 @@
+
+--------------------------------------------------------------------
+shader 'main' {
+	uniform = {
+		Param    = block {
+			size1     = float( 32 );
+			size2     = float( 32 );
+			LUTMix    = float( 0 );
+			intensity = float( 1 );
+			gamma     = float( 0 );
+		};
+
+		_sampler_   = sampler( 1 );
+		samplerLUT1 = sampler( 2 );
+		samplerLUT2 = sampler( 3 );
+
+	};
+
+	program_vertex = 'vsh';
+	program_fragment = 'fsh';
+}
+
+--------------------------------------------------------------------
+source 'vsh' [[
+	@in vec4 position;
+	@in vec2 uv;
+	@in vec4 color;
+
+	@out LOWP vec4 colorVarying;
+	@out MEDP vec2 uvVarying;
+
+	void main () {
+		gl_Position = position;
+		uvVarying = uv;
+		colorVarying = color;
+	}
+]]
+
+--------------------------------------------------------------------
+source 'fsh' [[	
+	@in LOWP vec4 colorVarying;
+	@in MEDP vec2 uvVarying;
+
+	@out vec4 FragColor;
+
+	@sampler _sampler_;
+	@sampler samplerLUT1;
+	@sampler samplerLUT2;
+
+	@block Param;
+
+	vec4 sampleAs3DTexture( sampler2D tex, vec3 uv, float width ) {
+		float sliceSize = 1.0 / width;              // space of 1 slice
+		float slicePixelSize = sliceSize / width;           // space of 1 pixel
+		float sliceInnerSize = slicePixelSize * (width - 1.0);  // space of width pixels
+		float zSlice0 = min(floor(uv.z * width), width - 1.0);
+		float zSlice1 = min(zSlice0 + 1.0, width - 1.0);
+		float xOffset = slicePixelSize * 0.5 + uv.x * sliceInnerSize;
+		float s0 = xOffset + (zSlice0 * sliceSize);
+		float s1 = xOffset + (zSlice1 * sliceSize);
+		vec4 slice0Color = texture(tex, vec2(s0, uv.y));
+		vec4 slice1Color = texture(tex, vec2(s1, uv.y));
+		float zOffset = mod(uv.z * width, 1.0);
+		vec4 result = mix(slice0Color, slice1Color, zOffset);
+		return result;
+	}
+
+	vec4 funcGamma ( vec4 color ) {
+		color.rgb = pow( color.rgb, vec3( 1.0 - gamma * 0.02 ));
+			 // + vec3( gamma * 0.01 );
+		return color;
+	}
+
+	void main () {
+		LOWP vec4 pixel = texture ( _sampler_, uvVarying );
+		vec4 gradedPixel = mix(
+				sampleAs3DTexture( samplerLUT1, pixel.rgb, size1 ), 
+				sampleAs3DTexture( samplerLUT2, pixel.rgb, size2 ),
+				LUTMix
+			);
+		gradedPixel.a = pixel.a;
+	  FragColor = funcGamma( mix(pixel, gradedPixel, intensity ) );
+	}
+
+]]

@@ -1,0 +1,64 @@
+--------------------------------------------------------------------
+shader 'main' {
+	uniform = {
+		Param    = block() {
+			intensity = float( 1 )
+		};
+
+		ViewSize = block() {
+			viewWidth  = global( VIEW_WIDTH );
+			viewHeight = global( VIEW_HEIGHT );
+		};
+
+		_sampler_ = sampler( 1 );
+
+	};
+
+	program_vertex = 'vsh';
+	program_fragment = 'fsh';
+}
+
+--------------------------------------------------------------------
+source 'vsh' [[
+	@in vec4 position;
+	@in vec2 uv;
+	@in vec4 color;
+
+	@out LOWP vec4 colorVarying;
+	@out MEDP vec2 uvVarying;
+
+	void main () {
+		gl_Position = position;
+		uvVarying = uv;
+		colorVarying = color;
+	}
+]]
+
+--------------------------------------------------------------------
+source 'fsh' [[	
+	@in LOWP vec4 colorVarying;
+	@in MEDP vec2 uvVarying;
+
+	@out vec4 FragColor;
+	
+	@sampler _sampler_;
+
+	@block Param;
+	@block ViewSize;
+
+	void main () {
+		float du = 1.0/viewWidth  * 1.0;
+		float dv = 1.0/viewHeight * 1.0;
+		vec4 c;
+		c = texture ( _sampler_, uvVarying + vec2( 0.0,  dv ) ) * 0.15;
+		c += texture ( _sampler_, uvVarying + vec2( 0.0, -dv ) ) * 0.15;
+		c += texture ( _sampler_, uvVarying + vec2(  du, 0.0 ) ) * 0.15;
+		c += texture ( _sampler_, uvVarying + vec2( -du, 0.0 ) ) * 0.15;
+		c += texture ( _sampler_, uvVarying + vec2(  du,  dv ) ) * 0.08;
+		c += texture ( _sampler_, uvVarying + vec2(  du, -dv ) ) * 0.08;
+		c += texture ( _sampler_, uvVarying + vec2( -du,  dv ) ) * 0.08;
+		c += texture ( _sampler_, uvVarying + vec2( -du, -dv ) ) * 0.08;
+		FragColor = texture( _sampler_, uvVarying ) * mix( 1.0, 0.08, intensity ) + c * intensity;
+
+	}
+]]

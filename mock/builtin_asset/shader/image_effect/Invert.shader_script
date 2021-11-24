@@ -1,0 +1,42 @@
+--------------------------------------------------------------------
+shader 'main' {
+	uniform = {
+		_sampler_ = sampler(1);
+	};
+
+	program_vertex = 'vsh';
+	program_fragment = 'fsh';
+}
+
+--------------------------------------------------------------------
+source 'vsh' [[
+	@in vec4 position;
+	@in vec2 uv;
+	@in vec4 color;
+
+	@out LOWP vec4 colorVarying;
+	@out MEDP vec2 uvVarying;
+
+	void main () {
+		gl_Position = position;
+		uvVarying = uv;
+		colorVarying = color;
+	}
+]]
+
+--------------------------------------------------------------------
+source 'fsh' [[  
+	@in LOWP vec4 colorVarying;
+	@in MEDP vec2 uvVarying;
+
+	@out vec4 FragColor;
+	
+	@sampler _sampler_;
+
+	void main ()
+	{
+		// Sample the input pixel
+		vec4 color = texture(_sampler_, uvVarying);
+		FragColor = vec4( 1.0 - color.r, 1.0 - color.g, 1.0 - color.b, color.a );
+	}
+]]

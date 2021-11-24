@@ -1,0 +1,126 @@
+branch {
+	['passH']   = 'passH';
+	['passV']   = 'passV';
+}
+
+shader 'passH' {
+	uniform = {
+		_sampler_ = sampler( 1 );
+		ViewSize = block{
+			viewWidth  = global( VIEW_WIDTH );
+			viewHeight = global( VIEW_HEIGHT );
+		}
+	};
+
+	program_vertex = 'vshH';
+	program_fragment = 'fsh';
+}
+
+shader 'passV' {
+	uniform = {
+		_sampler_ = sampler( 1 );
+		ViewSize = block{
+			viewWidth  = global( VIEW_WIDTH );
+			viewHeight = global( VIEW_HEIGHT );
+		}
+	};
+
+	program_vertex = 'vshV';
+	program_fragment = 'fsh';
+}
+
+source 'vshH' [[
+	@in vec4 position;
+	@in vec2 uv;
+	@in vec4 color;
+
+	@out LOWP vec4 colorVarying;
+	@out MEDP vec2 uvVarying;
+	@out MEDP vec4 v_blurTexCoords[7]; //OUT
+
+	@block ViewSize;
+
+	void main () {
+		float du = 1.0/viewWidth;
+		gl_Position = position;
+		uvVarying = uv;
+		colorVarying = color;
+		v_blurTexCoords[ 0].xy = uv + vec2(-du*7.0, 0.0);
+		v_blurTexCoords[ 1].xy = uv + vec2(-du*6.0, 0.0);
+		v_blurTexCoords[ 2].xy = uv + vec2(-du*5.0, 0.0);
+		v_blurTexCoords[ 3].xy = uv + vec2(-du*4.0, 0.0);
+		v_blurTexCoords[ 4].xy = uv + vec2(-du*3.0, 0.0);
+		v_blurTexCoords[ 5].xy = uv + vec2(-du*2.0, 0.0);
+		v_blurTexCoords[ 6].xy = uv + vec2(-du*1.0, 0.0);
+		v_blurTexCoords[ 0].zw = uv + vec2( du*1.0, 0.0);
+		v_blurTexCoords[ 1].zw = uv + vec2( du*2.0, 0.0);
+		v_blurTexCoords[ 2].zw = uv + vec2( du*3.0, 0.0);
+		v_blurTexCoords[ 3].zw = uv + vec2( du*4.0, 0.0);
+		v_blurTexCoords[ 4].zw = uv + vec2( du*5.0, 0.0);
+		v_blurTexCoords[ 5].zw = uv + vec2( du*6.0, 0.0);
+		v_blurTexCoords[ 6].zw = uv + vec2( du*7.0, 0.0);
+	}
+]]
+
+
+source 'vshV' [[
+	@in vec4 position;
+	@in vec2 uv;
+	@in vec4 color;
+
+	@out LOWP vec4 colorVarying;
+	@out MEDP vec2 uvVarying;
+	@out MEDP vec4 v_blurTexCoords[7]; //OUT
+
+	@block ViewSize;
+
+	void main () {
+		float dv = 1.0/viewHeight;
+		gl_Position = position;
+		uvVarying = uv;
+		colorVarying = color;
+		v_blurTexCoords[ 0].xy = uv + vec2( 0.0, -dv*7.0 );
+		v_blurTexCoords[ 1].xy = uv + vec2( 0.0, -dv*6.0 );
+		v_blurTexCoords[ 2].xy = uv + vec2( 0.0, -dv*5.0 );
+		v_blurTexCoords[ 3].xy = uv + vec2( 0.0, -dv*4.0 );
+		v_blurTexCoords[ 4].xy = uv + vec2( 0.0, -dv*3.0 );
+		v_blurTexCoords[ 5].xy = uv + vec2( 0.0, -dv*2.0 );
+		v_blurTexCoords[ 6].xy = uv + vec2( 0.0, -dv*1.0 );
+		v_blurTexCoords[ 0].zw = uv + vec2( 0.0,  dv*1.0 );
+		v_blurTexCoords[ 1].zw = uv + vec2( 0.0,  dv*2.0 );
+		v_blurTexCoords[ 2].zw = uv + vec2( 0.0,  dv*3.0 );
+		v_blurTexCoords[ 3].zw = uv + vec2( 0.0,  dv*4.0 );
+		v_blurTexCoords[ 4].zw = uv + vec2( 0.0,  dv*5.0 );
+		v_blurTexCoords[ 5].zw = uv + vec2( 0.0,  dv*6.0 );
+		v_blurTexCoords[ 6].zw = uv + vec2( 0.0,  dv*7.0 );
+	}
+]]
+
+source 'fsh' [[	
+	@in LOWP vec4 colorVarying;
+	@in MEDP vec2 uvVarying;
+	@in MEDP vec4 v_blurTexCoords[7]; //OUT
+
+	@out vec4 FragColor;
+	
+	@sampler _sampler_;
+	
+	void main () {
+		FragColor = vec4(0.0);
+		FragColor += texture(_sampler_, v_blurTexCoords[ 0].xy)*0.0044299121055113265;
+		FragColor += texture(_sampler_, v_blurTexCoords[ 1].xy)*0.00895781211794;
+		FragColor += texture(_sampler_, v_blurTexCoords[ 2].xy)*0.0215963866053;
+		FragColor += texture(_sampler_, v_blurTexCoords[ 3].xy)*0.0443683338718;
+		FragColor += texture(_sampler_, v_blurTexCoords[ 4].xy)*0.0776744219933;
+		FragColor += texture(_sampler_, v_blurTexCoords[ 5].xy)*0.115876621105;
+		FragColor += texture(_sampler_, v_blurTexCoords[ 6].xy)*0.147308056121;
+		FragColor += texture(_sampler_, uvVarying         )*0.159576912161;
+		FragColor += texture(_sampler_, v_blurTexCoords[ 0].zw)*0.147308056121;
+		FragColor += texture(_sampler_, v_blurTexCoords[ 1].zw)*0.115876621105;
+		FragColor += texture(_sampler_, v_blurTexCoords[ 2].zw)*0.0776744219933;
+		FragColor += texture(_sampler_, v_blurTexCoords[ 3].zw)*0.0443683338718;
+		FragColor += texture(_sampler_, v_blurTexCoords[ 4].zw)*0.0215963866053;
+		FragColor += texture(_sampler_, v_blurTexCoords[ 5].zw)*0.00895781211794;
+		FragColor += texture(_sampler_, v_blurTexCoords[ 6].zw)*0.0044299121055113265;
+	}
+]]

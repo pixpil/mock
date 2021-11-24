@@ -1,0 +1,67 @@
+--------------------------------------------------------------------
+shader 'main' {
+	uniform = {
+		Param    = block {
+			time 			= float( 1 );
+			intensity = float( 2 );
+		};
+		_sampler_ = sampler(1);
+
+	};
+
+	program_vertex = 'vsh';
+	program_fragment = 'fsh';
+}
+
+--------------------------------------------------------------------
+source 'vsh' [[
+	@in vec4 position;
+	@in vec2 uv;
+	@in vec4 color;
+
+	@out LOWP vec4 colorVarying;
+	@out MEDP vec2 uvVarying;
+
+	void main () {
+		gl_Position = position;
+		uvVarying = uv;
+		colorVarying = color;
+	}
+]]
+
+--------------------------------------------------------------------
+source 'fsh' [[	
+	@in LOWP vec4 colorVarying;
+	@in MEDP vec2 uvVarying;
+
+	@out vec4 FragColor;
+	
+	#define BlendColorDodgef(base, blend) 	((blend == 1.0) ? blend : min(base / (1.0 - blend), 1.0))
+	#define BlendColorBurnf(base, blend) 	((blend == 0.0) ? blend : max((1.0 - ((1.0 - base) / blend)), 0.0))
+	#define BlendVividLightf(base, blend) 	((blend < 0.5) ? BlendColorBurnf(base, (2.0 * blend)) : BlendColorDodgef(base, (2.0 * (blend - 0.5))))
+	#define BlendHardMixf(base, blend) 	((BlendVividLightf(base, blend) < 0.5) ? 0.0 : 1.0)
+
+	@sampler _sampler_;
+	
+	@block Param;
+
+	float rand(vec2 co){
+		return fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453);
+	}
+
+	void main () {
+		LOWP vec4 color = texture ( _sampler_, uvVarying );
+		float blend = rand( uvVarying + vec2(fract(time*0.1)) );
+		LOWP vec4 color1;
+		color1.r = BlendHardMixf( color.r, blend );
+		color1.g = BlendHardMixf( color.g, blend );
+		color1.b = BlendHardMixf( color.b, blend );
+		color1.a = 1.0;
+		//color1.g=color.g;
+		//color1.b=color.b;
+		float k1 = 1.0 - ( color.r + color.g ) * 0.5;
+
+		FragColor = mix( color, color1, intensity * 0.01 * k1 );
+		FragColor.a = 1.0;
+	}
+]]

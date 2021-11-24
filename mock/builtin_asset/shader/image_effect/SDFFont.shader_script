@@ -1,0 +1,62 @@
+variants {
+	SDF = { true, false };
+}
+----------------------------------------------------------------
+-- Shader Script: Normal
+----------------------------------------------------------------
+
+----------------------------------------------------------------
+shader 'main' {
+	uniform = {
+		_sampler_          = sampler( 1 );
+
+		Param    = block() {
+			smoothing = float( 1/18 );
+		};
+	};
+
+	program_vertex   = 'vsh';
+	program_fragment = 'fsh';
+}
+
+
+source 'vsh' [[
+@in vec4 position;
+@in vec2 uv;
+@in vec4 color;
+
+@out LOWP vec4 colorVarying;
+@out MEDP vec2 uvVarying;
+
+void main () {
+	gl_Position  = position;
+	uvVarying    = uv;
+	colorVarying = color;
+}
+]]
+
+----------------------------------------------------------------
+source 'fsh' [[
+	@out vec4 FragColor;
+
+	@in LOWP vec4 colorVarying;
+	@in MEDP vec2 uvVarying;
+
+	@sampler _sampler_;
+	@block Param;
+	const float edge = 0.5;
+
+	void main () {
+		float d = texture( _sampler_, uvVarying ).a;
+		$if context.SDF then
+    float alpha = smoothstep( edge - smoothing , edge + smoothing, d );
+    $else
+    float alpha = pow( d*2.0, 1.2 );
+    $end
+    vec3 c = colorVarying.rgb;
+    // c = vec3( 1.0 );
+    FragColor = vec4( c, colorVarying.a * alpha);
+	}
+]]
+
+
